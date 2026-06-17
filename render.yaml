@@ -1,0 +1,38 @@
+# Render Blueprint: single free Docker web service (FastAPI + built Vite SPA).
+# Secrets (sync: false) are set in the Render dashboard, not committed.
+services:
+  - type: web
+    name: face-drill
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: TAVUS_API_KEY
+        sync: false
+      # Recording (Azure) - paste these in the dashboard.
+      - key: ENABLE_RECORDING
+        value: "true"
+      - key: RECORDING_PROVIDER
+        value: azure_blob
+      - key: RECORDING_AZURE_STORAGE_ACCOUNT
+        sync: false
+      - key: RECORDING_AZURE_CONTAINER
+        value: conversation-recordings
+      - key: RECORDING_AZURE_TENANT_ID
+        sync: false
+      - key: RECORDING_AZURE_CLIENT_ID
+        sync: false
+      # Optional: pin a stock replica / language.
+      - key: TAVUS_REPLICA_ID
+        sync: false
+      # Pre-provisioned persona ids (run scripts/provision.py once, then paste here).
+      # When all three are set, cold starts skip provisioning and never duplicate resources.
+      - key: PERSONA_B1B2_ID
+        sync: false
+      - key: PERSONA_F1_ID
+        sync: false
+      - key: PERSONA_N400_ID
+        sync: false
+    # RENDER_EXTERNAL_URL is injected automatically and used as the webhook base.

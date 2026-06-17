@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.local
+backend/personas.json
+backend/.cache/
+backend/.venv/
+backend/static/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+.DS_Store
+*.log
+.vite/

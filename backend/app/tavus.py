@@ -1,0 +1,68 @@
+"""Thin async client for the Tavus v2 REST API.
+
+Mirrors the responsibilities of the original `server/src/bey.ts`: inject the API
+key header, set Content-Type, and raise a typed error on non-2xx responses.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import httpx
+
+logger = logging.getLogger(__name__)
+
+BASE_URL = "https://tavusapi.com/v2"
+
+
+class TavusApiError(Exception):
+    """Raised when the Tavus API returns a non-2xx response."""
+
+    def __init__(self, status_code: int, path: str, body: str) -> None:
+        self.status_code = status_code
+        self.path = path
+        self.body = body
+        super().__init__(f"Tavus API {path} -> {status_code}: {body[:500]}")
+
+
+class TavusClient:
+    """Async wrapper around the Tavus v2 API."""
+
+    def __init__(self, api_key: str, *, timeout: float = 30.0) -> None:
+        self._client = httpx.AsyncClient(
+            base_url=BASE_URL,
+            headers={"x-api-key": api_key},
+            timeout=timeout,
+        )
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP connection pool."""
+        await self._client.aclose()
+
+    async def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        """Perform a raw request and return the response without raising on status."""
+        return await self._client.request(method, path, json=json, params=params)
+
+    async def request_json(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Perform a request and return parsed JSON, raising `TavusApiError` on failure."""
+        response = await self.request(method, path, json=json, params=params)
+        if response.is_success:
+            if not response.content:
+                return {}
+            return response.json()
+        raise TavusApiError(response.status_code, path, response.text)
