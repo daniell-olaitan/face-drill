@@ -157,6 +157,8 @@ def build_persona_payload(
             # A real officer cuts off rambling answers; low patience + high interruptibility.
             "turn_taking_patience": "low",
             "replica_interruptibility": "high",
+            # Re-engage a silent/idle applicant instead of waiting indefinitely.
+            "idle_engagement": "eager",
         },
     }
     if deps.pronunciation_dictionary_id:

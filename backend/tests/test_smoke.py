@@ -186,6 +186,7 @@ def test_build_persona_payload_has_all_layers() -> None:
     assert layers["perception"]["perception_analysis_queries"]
     assert layers["stt"]["hotwords"]
     assert layers["conversational_flow"]["replica_interruptibility"] == "high"
+    assert layers["conversational_flow"]["idle_engagement"] == "eager"
     assert layers["tts"]["pronunciation_dictionary_id"] == "pd1"
     assert payload["guardrail_ids"] == ["g1", "g2"]
     assert payload["objectives_id"] == "o1"
