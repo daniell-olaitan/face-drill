@@ -35,6 +35,7 @@ const LiveAvatarVideoInterview = ({
   onUnavailable,
 }: LiveAvatarVideoInterviewProps) => {
   const [status, setStatus] = useState<"connecting" | "live">("connecting");
+  const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
@@ -107,7 +108,7 @@ const LiveAvatarVideoInterview = ({
       }
       if (cancelled) return;
       conversationIdRef.current = embed.conversationId ?? null;
-      setSecondsLeft(embed.maxSeconds ?? FALLBACK_SECONDS);
+      setDurationSeconds(embed.maxSeconds ?? FALLBACK_SECONDS);
 
       let call: DailyCall;
       try {
@@ -136,6 +137,14 @@ const LiveAvatarVideoInterview = ({
     };
   }, [category, context, onUnavailable]);
 
+  // Start the countdown only once the officer is actually live, so the wait while
+  // they "take their seat" does not eat into the interview (or your minutes).
+  useEffect(() => {
+    if (status === "live" && secondsLeft === null && durationSeconds !== null) {
+      setSecondsLeft(durationSeconds);
+    }
+  }, [status, secondsLeft, durationSeconds]);
+
   // Countdown: ends the interview (routes to debrief) when it elapses.
   useEffect(() => {
     if (secondsLeft === null) return;
@@ -162,6 +171,7 @@ const LiveAvatarVideoInterview = ({
   };
 
   const lowTime = secondsLeft !== null && secondsLeft <= 30;
+  const displaySeconds = secondsLeft ?? durationSeconds;
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
@@ -178,7 +188,7 @@ const LiveAvatarVideoInterview = ({
           )}
         >
           <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-destructive" />
-          {secondsLeft !== null ? formatTime(secondsLeft) : "Live"}
+          {displaySeconds !== null ? formatTime(displaySeconds) : "Live"}
         </span>
         <Button
           variant="outline"
