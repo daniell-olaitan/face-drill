@@ -40,6 +40,8 @@ const LiveAvatarVideoInterview = ({
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [audioBlocked, setAudioBlocked] = useState(false);
+  const [captionsOn, setCaptionsOn] = useState(true);
+  const [caption, setCaption] = useState<{ role: "user" | "officer"; text: string } | null>(null);
 
   const callRef = useRef<DailyCall | null>(null);
   const conversationIdRef = useRef<string | null>(null);
@@ -47,6 +49,7 @@ const LiveAvatarVideoInterview = ({
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const audioElsRef = useRef<HTMLAudioElement[]>([]);
   const startedRef = useRef(false);
+  const captionTimerRef = useRef<number | null>(null);
 
   const playAudio = useCallback(() => {
     let blocked = false;
@@ -64,6 +67,7 @@ const LiveAvatarVideoInterview = ({
     let cancelled = false;
 
     const cleanup = async () => {
+      if (captionTimerRef.current !== null) window.clearTimeout(captionTimerRef.current);
       for (const el of audioElsRef.current) {
         el.srcObject = null;
         el.remove();
@@ -121,6 +125,25 @@ const LiveAvatarVideoInterview = ({
 
       call.on("track-started", (ev) => {
         if (ev?.track) attach(ev.track, Boolean(ev.participant?.local));
+      });
+
+      // Live captions: Tavus streams spoken text over the data channel.
+      call.on("app-message", (ev) => {
+        const msg = ev?.data as
+          | { event_type?: string; properties?: { role?: string; speech?: string; text?: string } }
+          | undefined;
+        if (!msg || !String(msg.event_type ?? "").includes("utterance")) return;
+        const props = msg.properties ?? {};
+        const text =
+          typeof props.speech === "string"
+            ? props.speech
+            : typeof props.text === "string"
+              ? props.text
+              : "";
+        if (!text.trim()) return;
+        setCaption({ role: props.role === "user" ? "user" : "officer", text });
+        if (captionTimerRef.current !== null) window.clearTimeout(captionTimerRef.current);
+        captionTimerRef.current = window.setTimeout(() => setCaption(null), 6000);
       });
 
       try {
@@ -245,6 +268,18 @@ const LiveAvatarVideoInterview = ({
               )}
             </div>
 
+            {/* Live captions */}
+            {captionsOn && caption && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center px-3">
+                <p className="max-w-2xl rounded-lg bg-black/70 px-3 py-1.5 text-center text-sm leading-snug text-white">
+                  <span className="font-semibold text-white/60">
+                    {caption.role === "user" ? "You: " : "Officer: "}
+                  </span>
+                  {caption.text}
+                </p>
+              </div>
+            )}
+
             {/* Controls */}
             {status === "live" && (
               <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
@@ -261,6 +296,13 @@ const LiveAvatarVideoInterview = ({
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition-colors hover:bg-black/80"
                 >
                   {camOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-destructive" />}
+                </button>
+                <button
+                  onClick={() => setCaptionsOn((c) => !c)}
+                  aria-label={captionsOn ? "Hide captions" : "Show captions"}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-xs font-bold text-white backdrop-blur transition-colors hover:bg-black/80"
+                >
+                  <span className={cn(!captionsOn && "opacity-40")}>CC</span>
                 </button>
               </div>
             )}
