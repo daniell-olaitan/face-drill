@@ -280,7 +280,7 @@ const LiveAvatarVideoInterview = ({
             {/* Live captions */}
             {captionsOn && caption && (
               <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center pl-3 pr-28 sm:px-3">
-                <p className="line-clamp-2 max-w-2xl rounded-lg bg-black/70 px-3 py-1.5 text-center text-sm leading-snug text-white">
+                <p className="max-h-32 max-w-2xl overflow-y-auto rounded-lg bg-black/70 px-3 py-1.5 text-center text-sm leading-snug text-white">
                   <span className="font-semibold text-white/60">
                     {caption.role === "user" ? "You: " : "Officer: "}
                   </span>
