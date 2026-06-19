@@ -21,10 +21,11 @@ const App = () => (
       <BrowserRouter>
         <ScrollToHash />
         <Routes>
+          {/* Full-screen, no site header/footer, so it fits one screen. */}
+          <Route path="/interview" element={<Interview />} />
           <Route element={<AppLayout />}>
             <Route path="/" element={<Index />} />
             <Route path="/practice" element={<Practice />} />
-            <Route path="/interview" element={<Interview />} />
             <Route path="/debrief" element={<Debrief />} />
             {/* Legacy routes */}
             <Route path="/demo" element={<Navigate to="/practice" replace />} />

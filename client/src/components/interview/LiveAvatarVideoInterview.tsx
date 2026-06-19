@@ -174,7 +174,7 @@ const LiveAvatarVideoInterview = ({
   const displaySeconds = secondsLeft ?? durationSeconds;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
       <div className="container flex h-14 shrink-0 items-center justify-between gap-2 sm:h-16">
         <Button variant="ghost" size="sm" onClick={onLeave} className="text-muted-foreground">
           Leave
