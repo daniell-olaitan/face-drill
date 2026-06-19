@@ -40,16 +40,27 @@ const classifyPhase = (question: string): InterviewPhase => {
   return "credibility";
 };
 
-/** Pair each officer question with the user's next reply and score the set. */
+// Treat an officer turn as a question worth scoring if it's a question or a real
+// prompt (filters out short acknowledgements like "Thank you.").
+const isQuestionLike = (text: string): boolean => text.includes("?") || text.trim().length > 30;
+
+/**
+ * Score each officer question against the user's reply. Crucially, questions the
+ * user left UNANSWERED are kept as empty answers (strength 0) so going silent
+ * tanks the score, the way a real interview would, instead of being ignored.
+ */
 export const buildLiveDebrief = (transcript: TranscriptTurn[]): SessionDebrief | null => {
   const questions: Question[] = [];
   const records: AnswerRecord[] = [];
 
   for (let i = 0; i < transcript.length; i++) {
     const turn = transcript[i];
-    if (turn.role === "user") continue; // we want officer question -> next user answer
-    const answer = transcript[i + 1];
-    if (!answer || answer.role !== "user") continue;
+    if (turn.role === "user") continue; // we score officer question -> next user answer
+    const next = transcript[i + 1];
+    const answered = Boolean(next && next.role === "user");
+
+    // Keep answered questions, plus unanswered ones that were real questions.
+    if (!answered && !isQuestionLike(turn.content)) continue;
 
     const phase = classifyPhase(turn.content);
     const id = `live-${questions.length}`;
@@ -61,10 +72,15 @@ export const buildLiveDebrief = (transcript: TranscriptTurn[]): SessionDebrief |
       listensFor: "",
       coachTip: GENERIC_TIP[phase],
     });
-    records.push({ questionId: id, answer: answer.content, durationSec: 0, spoken: true });
+    records.push({
+      questionId: id,
+      answer: answered ? next!.content : "",
+      durationSec: 0,
+      spoken: true,
+    });
   }
 
-  if (records.length === 0) return null;
+  if (questions.length === 0) return null;
   return buildDebrief(questions, records);
 };
 
@@ -75,19 +91,17 @@ export interface DimensionScore {
   score: number;
 }
 
-/** Overall readiness, 0-100, from the average answer strength (0-3). */
+/** Overall readiness, 0-100, over ALL asked questions (unanswered count as 0). */
 export const readinessScore = (debrief: SessionDebrief): number => {
-  const answered = debrief.items.filter((i) => i.record.answer.trim().length > 0);
-  if (answered.length === 0) return 0;
-  const total = answered.reduce((sum, i) => sum + i.notes.strength, 0);
-  return Math.round((total / (answered.length * 3)) * 100);
+  if (debrief.items.length === 0) return 0;
+  const total = debrief.items.reduce((sum, i) => sum + i.notes.strength, 0);
+  return Math.round((total / (debrief.items.length * 3)) * 100);
 };
 
-/** Per-area scores, grouped by interview phase. */
+/** Per-area scores, grouped by interview phase (unanswered questions count as 0). */
 export const dimensionScores = (debrief: SessionDebrief): DimensionScore[] => {
   const byPhase = new Map<InterviewPhase, number[]>();
   for (const item of debrief.items) {
-    if (!item.record.answer.trim()) continue;
     const arr = byPhase.get(item.question.phase) ?? [];
     arr.push(item.notes.strength);
     byPhase.set(item.question.phase, arr);
