@@ -85,6 +85,17 @@ def test_embed_maps_category_to_persona(client: TestClient, fake_client: FakeTav
     assert "H-1B" in post[2]["conversational_context"]
 
 
+def test_embed_includes_applicant_context(client: TestClient, fake_client: FakeTavusClient) -> None:
+    res = client.post(
+        "/api/liveavatar/embed",
+        json={"category": "b1b2", "applicant_context": "Purpose of trip: visiting family."},
+    )
+    assert res.status_code == 200
+    post = next(c for c in fake_client.calls if c[0] == "POST" and c[1] == "/conversations")
+    assert post[2] is not None
+    assert "visiting family" in post[2]["conversational_context"]
+
+
 def test_start_session_invalid_visa(client: TestClient) -> None:
     res = client.post("/api/start-session", json={"visa_type": "h1b"})
     assert res.status_code == 422  # rejected by the Literal schema

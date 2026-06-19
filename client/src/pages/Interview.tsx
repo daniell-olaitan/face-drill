@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Settings2, X } from "lucide-react";
 import SimulatedInterview from "@/components/interview/SimulatedInterview";
 import LiveAvatarVideoInterview from "@/components/interview/LiveAvatarVideoInterview";
-import { getStoredCategory, saveSession } from "@/lib/interviewStorage";
+import PrepForm from "@/components/interview/PrepForm";
+import { getStoredCategory, saveSession, type PrepAnswers } from "@/lib/interviewStorage";
 import type { AnswerRecord } from "@/lib/interviewEngine";
 import type { Question } from "@/lib/questionBank";
 
@@ -16,13 +17,17 @@ const Interview = () => {
 
   const forcedSim = params.get("mode") === "sim";
   // Start with the live hyperreal avatar. If the embed can't be created (no
-  // API key, proxy not running, network blocked), handleUnavailable flips us to
-  // the built-in simulator so the session always works. Use ?mode=sim to force
-  // the simulator.
+  // backend, network blocked), handleUnavailable flips us to the built-in
+  // simulator so the session always works. Use ?mode=sim to force the simulator.
   const [mode, setMode] = useState<Mode>(forcedSim ? "sim" : "live");
   const [fallbackReason, setFallbackReason] = useState<string | null>(null);
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const startedAt = useState(() => new Date().toISOString())[0];
+
+  // Optional "DS-160-lite" pre-interview form (live mode only).
+  const [prepDone, setPrepDone] = useState(false);
+  const [prepContext, setPrepContext] = useState<string | null>(null);
+  const [prepAnswers, setPrepAnswers] = useState<PrepAnswers | null>(null);
 
   const leave = useCallback(() => navigate("/practice"), [navigate]);
 
@@ -51,10 +56,11 @@ const Interview = () => {
         questions: [],
         records: [],
         liveConversationId: conversationId ?? undefined,
+        prep: prepAnswers ?? undefined,
       });
       navigate("/debrief");
     },
-    [category, navigate, startedAt],
+    [category, navigate, startedAt, prepAnswers],
   );
 
   const handleUnavailable = useCallback((reason: string) => {
@@ -62,37 +68,46 @@ const Interview = () => {
     setMode("sim");
   }, []);
 
+  const onPrepSubmit = useCallback((answers: PrepAnswers, ctx: string | null) => {
+    setPrepAnswers(answers);
+    setPrepContext(ctx);
+    setPrepDone(true);
+  }, []);
+
+  const onPrepSkip = useCallback(() => setPrepDone(true), []);
+
+  const live = prepDone ? (
+    <LiveAvatarVideoInterview
+      category={category}
+      context={prepContext}
+      onComplete={completeLive}
+      onLeave={leave}
+      onUnavailable={handleUnavailable}
+    />
+  ) : (
+    <PrepForm onSubmit={onPrepSubmit} onSkip={onPrepSkip} onLeave={leave} />
+  );
+
   return (
     <>
       {mode === "live" ? (
-        <LiveAvatarVideoInterview
-          category={category}
-          onComplete={completeLive}
-          onLeave={leave}
-          onUnavailable={handleUnavailable}
-        />
+        live
       ) : (
-        <SimulatedInterview
-          category={category}
-          onComplete={completeSimulated}
-          onLeave={leave}
-        />
+        <SimulatedInterview category={category} onComplete={completeSimulated} onLeave={leave} />
       )}
 
-      {/* Operator notice: the hyperreal avatar isn't configured or failed.
-          The session continues on the built-in simulator either way. */}
+      {/* The hyperreal avatar couldn't start; the session continues on the
+          built-in simulator either way. */}
       {fallbackReason && !noticeDismissed && (
         <aside className="fixed bottom-4 left-4 z-50 max-w-xs animate-fade-up rounded-2xl border border-border bg-card p-4 shadow-medium">
           <div className="flex items-start gap-3">
             <Settings2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0">
               <p className="text-xs font-semibold text-foreground">
-                Hyperreal avatar unavailable
+                Live officer unavailable
               </p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {fallbackReason}. Running the built-in simulator instead. To
-                enable the avatar, set <code>LIVEAVATAR_API_KEY</code> in your{" "}
-                <code>.env</code> and restart the dev server (see README).
+                {fallbackReason}. Running the built-in simulator instead.
               </p>
             </div>
             <button

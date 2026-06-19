@@ -217,11 +217,10 @@ async def embed(body: EmbedRequest) -> EmbedResponse:
     """
     category = body.category.lower()
     visa_type: VisaType = CATEGORY_TO_VISA.get(category) or "b1b2"
+    parts = [p for p in (CATEGORY_CONTEXT.get(category), body.applicant_context) if p]
+    context = "\n".join(parts) if parts else None
     session = await start_session(
-        StartSessionRequest(
-            visa_type=visa_type,
-            conversational_context=CATEGORY_CONTEXT.get(category),
-        )
+        StartSessionRequest(visa_type=visa_type, conversational_context=context)
     )
     return EmbedResponse(url=session.conversation_url, conversation_id=session.conversation_id)
 

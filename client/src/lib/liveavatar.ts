@@ -15,11 +15,12 @@ const EMBED_ENDPOINT =
 
 export const createLiveAvatarEmbed = async (
   category: VisaCategory,
+  applicantContext?: string | null,
 ): Promise<LiveAvatarEmbed> => {
   const res = await fetch(EMBED_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ category }),
+    body: JSON.stringify({ category, applicant_context: applicantContext ?? undefined }),
   });
 
   let payload: { url?: string; conversation_id?: string; error?: string } | null = null;

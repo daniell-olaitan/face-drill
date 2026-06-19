@@ -30,6 +30,9 @@ class EmbedRequest(BaseModel):
     """Body for POST /api/liveavatar/embed (the frontend's avatar-embed contract)."""
 
     category: str
+    # Optional applicant-provided details (the "DS-160-lite" pre-form) appended to
+    # the officer's context so it can reference and probe the applicant's situation.
+    applicant_context: str | None = None
 
 
 class EmbedResponse(BaseModel):

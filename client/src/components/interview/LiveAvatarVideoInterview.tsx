@@ -6,6 +6,8 @@ import type { VisaCategory } from "@/lib/questionBank";
 
 interface LiveAvatarVideoInterviewProps {
   category: VisaCategory;
+  /** Optional applicant pre-form context, passed to the officer. */
+  context?: string | null;
   /** Receives the Tavus conversation id so the debrief can fetch the report. */
   onComplete: (conversationId: string | null) => void;
   onLeave: () => void;
@@ -15,6 +17,7 @@ interface LiveAvatarVideoInterviewProps {
 
 const LiveAvatarVideoInterview = ({
   category,
+  context,
   onComplete,
   onLeave,
   onUnavailable,
@@ -26,7 +29,7 @@ const LiveAvatarVideoInterview = ({
   useEffect(() => {
     let cancelled = false;
 
-    createLiveAvatarEmbed(category)
+    createLiveAvatarEmbed(category, context)
       .then((embed) => {
         if (!cancelled) {
           conversationIdRef.current = embed.conversationId ?? null;
@@ -43,7 +46,7 @@ const LiveAvatarVideoInterview = ({
     return () => {
       cancelled = true;
     };
-  }, [category, onUnavailable]);
+  }, [category, context, onUnavailable]);
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
