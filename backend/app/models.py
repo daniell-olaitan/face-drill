@@ -42,6 +42,8 @@ class EmbedResponse(BaseModel):
     conversation_id: str
     # Visible interview length for the client countdown timer.
     max_seconds: int
+    # Whether the session is being recorded (so the UI can show a REC indicator).
+    recording: bool
 
 
 class EndSessionRequest(BaseModel):

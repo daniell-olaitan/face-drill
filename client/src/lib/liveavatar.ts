@@ -6,6 +6,8 @@ export interface LiveAvatarEmbed {
   conversationId?: string;
   /** Visible interview length in seconds for the countdown timer. */
   maxSeconds?: number;
+  /** Whether the session is being recorded (to show a REC indicator). */
+  recording?: boolean;
 }
 
 // Served by the FastAPI backend, which creates a Tavus conversation and returns
@@ -26,7 +28,13 @@ export const createLiveAvatarEmbed = async (
   });
 
   let payload:
-    | { url?: string; conversation_id?: string; max_seconds?: number; error?: string }
+    | {
+        url?: string;
+        conversation_id?: string;
+        max_seconds?: number;
+        recording?: boolean;
+        error?: string;
+      }
     | null = null;
   try {
     payload = await res.json();
@@ -45,5 +53,6 @@ export const createLiveAvatarEmbed = async (
     url: payload.url,
     conversationId: payload.conversation_id,
     maxSeconds: payload.max_seconds,
+    recording: payload.recording,
   };
 };

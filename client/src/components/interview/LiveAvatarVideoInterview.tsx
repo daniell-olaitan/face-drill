@@ -42,6 +42,7 @@ const LiveAvatarVideoInterview = ({
   const [audioBlocked, setAudioBlocked] = useState(false);
   const [captionsOn, setCaptionsOn] = useState(true);
   const [caption, setCaption] = useState<{ role: "user" | "officer"; text: string } | null>(null);
+  const [recording, setRecording] = useState(false);
 
   const callRef = useRef<DailyCall | null>(null);
   const conversationIdRef = useRef<string | null>(null);
@@ -113,6 +114,7 @@ const LiveAvatarVideoInterview = ({
       if (cancelled) return;
       conversationIdRef.current = embed.conversationId ?? null;
       setDurationSeconds(embed.maxSeconds ?? FALLBACK_SECONDS);
+      setRecording(embed.recording ?? false);
 
       let call: DailyCall;
       try {
@@ -234,6 +236,13 @@ const LiveAvatarVideoInterview = ({
               className="absolute inset-0 h-full w-full bg-black object-cover"
             />
 
+            {recording && status === "live" && (
+              <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur">
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-destructive" />
+                Rec
+              </div>
+            )}
+
             {status === "connecting" && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -270,8 +279,8 @@ const LiveAvatarVideoInterview = ({
 
             {/* Live captions */}
             {captionsOn && caption && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center px-3">
-                <p className="max-w-2xl rounded-lg bg-black/70 px-3 py-1.5 text-center text-sm leading-snug text-white">
+              <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center pl-3 pr-28 sm:px-3">
+                <p className="line-clamp-2 max-w-2xl rounded-lg bg-black/70 px-3 py-1.5 text-center text-sm leading-snug text-white">
                   <span className="font-semibold text-white/60">
                     {caption.role === "user" ? "You: " : "Officer: "}
                   </span>

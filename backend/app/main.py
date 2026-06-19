@@ -228,6 +228,7 @@ async def embed(body: EmbedRequest) -> EmbedResponse:
         url=session.conversation_url,
         conversation_id=session.conversation_id,
         max_seconds=settings.interview_duration_seconds,
+        recording=settings.enable_recording,
     )
 
 
