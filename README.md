@@ -1,253 +1,209 @@
-# face-drill
+# VisaDrill
 
-Practice high-stakes U.S. immigration interviews with a realistic AI consular officer, powered by [Tavus CVI](https://docs.tavus.io) (Conversational Video Interface).
+Practice high-stakes U.S. visa interviews with a hyperreal AI consular officer, powered by [Tavus CVI](https://docs.tavus.io) (Conversational Video Interface).
 
-Three interview modes:
+Interview tracks (the categories the frontend offers):
 
-- **Tourist Visa (B1/B2)** - consular interview, ~3 minutes
-- **Student Visa (F-1)** - consular interview, ~4 minutes
-- **Citizenship (N-400)** - USCIS naturalization interview, ~6 minutes
+- **Visitor (B1/B2)** - tourism or short business
+- **Student (F-1)**
+- **Work (H-1B)**
+- **Exchange (J-1)**
+
+There's also a general "any" practice mode. (A USCIS **N-400 citizenship** officer exists in the backend but isn't exposed in the UI.)
 
 > **Single service**: the FastAPI backend serves the real VisaDrill SPA (the
-> `jedidiah-oladele/facedrill` Vite/React/shadcn app, in `client/`) and provides the
-> Tavus-backed `/api`. The interview's hyperreal officer is rendered by **Tavus CVI**
-> (the frontend embeds the Tavus `conversation_url` through its existing avatar-embed
-> contract); the built-in browser **simulator** remains the zero-config fallback.
+> `jedidiah-oladele/facedrill` Vite/React/shadcn app, in `client/`) and the
+> Tavus-backed `/api`. The live officer is rendered with the **Daily SDK** (our own
+> in-call UI). If the avatar can't start, a zero-config **browser simulator** takes over.
+
+## How an interview works
+
+1. **Practice** page → pick a visa category.
+2. **Optional pre-interview form** ("DS-160-lite": purpose, funding, employer/school, ties, prior travel). Skippable; if filled, the answers are sent to the officer as context so it interviews you on your real situation. The Start/Skip tap also unlocks iOS audio.
+3. **Live interview** (`/interview`, full-screen): the Tavus officer rendered via the Daily SDK - officer video fills the card, your self-view is a PiP, with **mic/camera** controls, **live captions (CC toggle)**, a **countdown that auto-ends**, and a **REC** indicator when recording is on.
+4. **Debrief** (`/debrief`): a scored report (below).
+
+## Per-category officers
+
+Each category maps 1:1 to a **dedicated Tavus persona** with its own grounded prompt and objectives (`backend/app/personas.py`; `CATEGORY_TO_VISA` in `backend/app/main.py`):
+
+| Category | Officer focus |
+|---|---|
+| Visitor (B1/B2) | Purpose, itinerary, funding, **ties/return intent** (INA 214(b)) |
+| Student (F-1) | School/program, funding, why-the-U.S., return intent |
+| Work (H-1B) | Employer, specialty occupation, degree, salary - **dual-intent** (no ties/return pressure) |
+| Exchange (J-1) | Program + sponsor (DS-2019), funding, ties, **212(e)** |
+| `any` | Uses the Visitor officer |
+| N-400 (citizenship) | Exists in the backend; not surfaced in the UI |
+
+## Scored debrief
+
+For a live interview, `/debrief` (`LiveDebrief.tsx`) fetches `/api/report/:id` and shows:
+
+- a **verdict** + **approval-readiness score (0-100)**, with **progress vs. your last attempt**,
+- **per-area scores** (purpose, ties, finances, …),
+- **per-answer notes** (what landed / what to tighten) - computed by reusing the simulator's heuristic engine on the transcript; **unanswered questions count as zero**, so going silent tanks the score,
+- the officer's **demeanor read** (Raven perception) and a **recording link** when available.
+
+The browser simulator keeps its own local heuristic debrief.
 
 ## Tavus features used
 
-| # | Feature | What it does here | Where |
-|---|---|---|---|
-| 1 | **Perception (Raven)** | Officer "sees" the applicant; live awareness cues + an end-of-call demeanor analysis (eye contact, nervousness) | `personas.py` `layers.perception` |
-| 2 | **Objectives** | Goal-driven flow + structured scoring per section / civics | `objectives.py` |
-| 3 | **Recording + transcript** | Optional session recording (S3) and full transcript surfaced in the report | `start-session` properties, `/api/report` |
-| 4 | **Knowledge base (RAG)** | N-400 civics grounded in the official USCIS 100 questions | `documents.py` |
-| 5 | **Guardrails** | Hard-enforce: never coach/break character, block real PII, stay on topic | `guardrails.py` |
-| 6 | **Flow + STT hotwords** | Officer can interrupt rambling answers; accurate capture of visa terms/names | `personas.py` `layers.conversational_flow` / `stt` |
-| 7 | **Memories** | Cross-session memory keyed per applicant (progress across attempts) | `start-session` `memory_stores` |
-| 8 | **Language support** | Practice in 40+ languages or English-proficiency mode | `properties.language` (default english) |
-| 9 | **Pronunciation dictionary** | Correct TTS of "USCIS", "N-400", etc. | `pronunciation.py` |
+| # | Feature | Notes |
+|---|---|---|
+| 1 | **Perception (Raven)** | Live awareness cues + end-of-call demeanor analysis |
+| 2 | **Objectives** | A per-category objective set drives flow + structured output |
+| 3 | **Recording** | Optional; copied to your own Azure/S3. Off by default |
+| 4 | **Knowledge base (RAG)** | USCIS civics doc - attached to the **N-400** officer only (not the visa tracks) |
+| 5 | **Guardrails** | Never coach/break character, block real PII, stay on topic |
+| 6 | **Flow + STT** | Turn-taking, interruptibility, **idle re-engagement**, hotwords |
+| 7 | **Memories** | Implemented (`memory_stores`) but **not currently wired** into the live embed flow |
+| 8 | **Language** | Defaults to English; not yet a UI picker |
+| 9 | **Pronunciation dictionary** | Correct TTS of "USCIS", "N-400", etc. |
 
-Each feature degrades gracefully: if a Tavus resource fails to provision at startup
-(e.g. an account without that capability), the backend logs a warning and boots
-without it rather than failing.
+Every feature degrades gracefully: if a Tavus resource fails to provision at startup, the backend logs a warning and boots without it.
 
-The post-interview **debrief** (`/debrief`, `LiveDebrief.tsx`) shows the demeanor
-analysis, transcript, and recording link for live sessions. It pulls from the verbose
-conversation on demand (so it works without a public webhook); set `PUBLIC_BASE_URL`
-to also receive events via `POST /api/webhook`.
+## Models
+
+Three Tavus models are in play: **Phoenix-4** renders the replica, **Raven-1** is perception, **Sparrow-1** is turn-taking. Phoenix comes from the stock replica; Raven/Sparrow are set in the persona layers.
 
 ## Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend (`client/`) | Vite + React 18 + TypeScript + Tailwind + shadcn/ui (the real VisaDrill app); optional Supabase waitlist |
+| Frontend (`client/`) | Vite + React 18 + TypeScript + Tailwind + shadcn/ui + `@daily-co/daily-js`; optional Supabase waitlist |
 | Backend (`backend/`) | Python 3.11+ + FastAPI + httpx + Pydantic |
-| Avatar | Tavus CVI: Persona + stock Replica, embedded via `conversation_url` |
+| Avatar | Tavus CVI: a dedicated Persona + stock Replica per category |
 
 ## Architecture
 
 ```
-Browser (SPA served by FastAPI)            FastAPI (:8787)              Tavus API
+Browser (SPA served by FastAPI)              FastAPI (:8787)            Tavus API
   /interview (Live)
-        │  POST /api/liveavatar/embed {category} ─►  POST /v2/conversations ─►
-        │  ◄── { url, conversation_id } ◄───────────  ◄── conversation_url ───
-        ▼
-  iframe(url)  ◄═══ WebRTC (Daily, in-iframe) ═══►  Tavus officer joins, speaks
-        │
-  End ─► /debrief ─► GET /api/report/:id ─►  transcript + demeanor analysis
+    │  POST /api/liveavatar/embed {category, applicant_context?} ─► POST /v2/conversations ─►
+    │  ◄── { url, conversation_id, max_seconds, recording } ◄──────── ◄── conversation_url ──
+    ▼
+  Daily SDK joins the room  ◄════ WebRTC ════►  Tavus officer joins and speaks
+  (officer video + self-view PiP + captions + countdown)
+    │
+  End / time up ─► /debrief ─► GET /api/report/:id ─► scored debrief + demeanor read
 ```
 
-- The frontend's `category` (b1b2/f1/h1b/j1/any) maps to a backend persona
-  (`backend/app/main.py`): `b1b2` is a **general nonimmigrant officer** that adapts
-  to the category via injected `conversational_context` (so h1b/j1/any are handled by
-  one officer that asks employer/program-appropriate questions); `f1` keeps a
-  dedicated student officer.
-- **Live debrief** (`/debrief`): for Tavus sessions the page fetches `/api/report/:id`
-  and shows the demeanor analysis + transcript. The browser simulator keeps its own
-  local heuristic debrief. If the avatar embed fails (no key, network), the interview
-  falls back to the simulator automatically.
-
-On startup the backend verifies the key, then provisions one **Persona** per visa
-type (`backend/app/personas.py`) bound to a stock **Replica**, caching ids by content
-hash. Set the `PERSONA_*_ID` env vars (from `scripts/provision.py`) to skip
-provisioning entirely on ephemeral hosts.
+On startup the backend verifies the key, then provisions one dedicated **Persona** per
+visa type (`backend/app/personas.py`), each bound to a stock **Replica** and attached
+to its guardrails/objectives, caching ids by content hash. Set the `PERSONA_*_ID` env
+vars (from `scripts/provision.py`) to skip provisioning on ephemeral hosts.
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 20+ (the client build needs Node 20.19+/22 for Vite)
 - Python 3.11+
 - A Tavus API key with credit (from [platform.tavus.io](https://platform.tavus.io))
 
 ## Setup
 
-1. **Configure your API key.** Copy `.env.example` to `.env` at the project root:
-
-   ```sh
-   cp .env.example .env
-   # then edit .env and set TAVUS_API_KEY=...
-   ```
-
+1. **Configure your API key.** Copy `.env.example` to `.env` at the project root and set `TAVUS_API_KEY=...`.
 2. **Install dependencies.**
 
    ```sh
-   # backend (a virtualenv is recommended)
-   python3 -m venv backend/.venv
-   source backend/.venv/bin/activate
+   python3 -m venv backend/.venv && source backend/.venv/bin/activate
    pip install -r backend/requirements.txt
-
-   # frontend + root tooling
-   npm install
-   npm --prefix client install
+   npm install && npm --prefix client install
    ```
 
-3. **Run both dev servers** (backend on `:8787`, frontend on `:8080`):
+3. **Run both dev servers** (backend `:8787`, frontend `:8080`):
 
    ```sh
    npm run dev
    ```
 
-   `npm run dev` runs `uvicorn app.main:app` and Vite together; the Vite dev server
-   proxies `/api` to the backend. If you are not using a venv on your PATH, run the
-   backend yourself with `cd backend && uvicorn app.main:app --reload --port 8787`.
+   Vite proxies `/api` to the backend. (If `uvicorn` isn't on your PATH, run it yourself:
+   `cd backend && uvicorn app.main:app --reload --port 8787`.)
 
-4. **Open** [http://localhost:8080](http://localhost:8080), go to Practice → Start, and grant microphone + camera permission. (`/interview?mode=sim` forces the offline simulator.)
+4. **Open** [http://localhost:8080](http://localhost:8080) → Practice → pick a category → Start, and grant mic + camera. (`/interview?mode=sim` forces the offline simulator.) Note: live interviews spend Tavus minutes even locally; tune length with `INTERVIEW_DURATION_SECONDS`.
 
-## Choosing the interviewer face (replica)
+## Key env vars
 
-The interviewer uses a Tavus **stock replica**, set by `TAVUS_REPLICA_ID` in `.env`
-(defaults to a stock replica). To see what is available on your account:
+| Var | Purpose |
+|---|---|
+| `TAVUS_API_KEY` | Required |
+| `TAVUS_REPLICA_ID` | Stock replica (the officer's face); list with `GET /api/replicas` |
+| `INTERVIEW_DURATION_SECONDS` | Visible interview length / auto-end (default 240) |
+| `PERSONA_*_ID` (×5) | Pre-provisioned persona ids; set all to skip startup provisioning |
+| `ENABLE_RECORDING`, `RECORDING_AZURE_*` / `RECORDING_*` (S3) | Optional recording |
+| `DEFAULT_LANGUAGE`, `CIVICS_DOCUMENT_URL`, `PUBLIC_BASE_URL` | Optional |
+| `VITE_SUPABASE_*` | Optional waitlist (build-time) |
+
+Pre-provision once and pin the ids so cold starts don't recreate resources:
 
 ```sh
-curl http://localhost:8787/api/replicas
-# [{ "replica_id": "...", "replica_name": "..." }, ...]
+python backend/scripts/provision.py   # prints the five PERSONA_*_ID values
 ```
-
-Pick one, set `TAVUS_REPLICA_ID=...` in `.env`, and restart. Changing the replica
-changes the persona hash, so the personas are re-created automatically.
 
 ## Verify which features your Tavus account supports
 
-The free Basic plan may gate some features. Once `.env` has your key, probe the
-account: the script creates a throwaway instance of each resource, reports which
-succeed, and cleans them up. Conversation probes use `test_mode`, so they do not
-bill minutes.
-
 ```sh
-python backend/scripts/verify_tavus.py
-python backend/scripts/verify_tavus.py --skip-conversation   # skip the test_mode calls
-python backend/scripts/verify_tavus.py --keep                # leave created resources
+python backend/scripts/verify_tavus.py                 # creates+deletes a probe of each resource
+python backend/scripts/verify_tavus.py --skip-conversation
 ```
 
-It prints an `OK` / `FAIL` line per feature (#1-#9). Whatever a given account
-rejects, the server already skips gracefully at startup.
+Conversation probes use `test_mode`, so they don't bill minutes. Prints `OK`/`FAIL` per feature (#1-#9).
 
 ## Deploy (free, single service on Render)
 
-The `Dockerfile` builds the Vite frontend and serves it from FastAPI, so one free
-Render web service hosts everything. Its public URL also becomes the Tavus webhook
-base automatically (Render injects `RENDER_EXTERNAL_URL`), so no ngrok is needed.
+The `Dockerfile` builds the Vite frontend and serves it from FastAPI, so one free Render web service hosts everything. Its public URL auto-becomes the Tavus webhook base (`RENDER_EXTERNAL_URL`), so no ngrok is needed.
 
-1. Push this `face-drill/` directory to a Git repo (GitHub/GitLab).
-2. On [Render](https://render.com): **New -> Blueprint**, select the repo (it reads
-   `render.yaml`). Or **New -> Web Service -> Docker** and point at the `Dockerfile`.
-3. Set the secret env vars in the dashboard: `TAVUS_API_KEY`, and the
-   `RECORDING_AZURE_*` values (the non-secret ones are pre-filled by `render.yaml`).
-4. Deploy. The app comes up at `https://<name>.onrender.com`; `/api/health` is the
-   health check, and the SPA is served at `/`.
+1. Push the repo to GitHub.
+2. Render → **New → Blueprint** (reads `render.yaml`), or **Web Service → Docker**.
+3. Set the `sync: false` env vars in the dashboard (`TAVUS_API_KEY`, `PERSONA_*_ID`, recording vars, etc.).
+4. Deploy → live at `https://<name>.onrender.com`; `/api/health` is the health check, SPA at `/`.
 
-Free-tier notes:
-- The service spins down after ~15 min idle and cold-starts in ~30-60s.
-- The local resource cache (`backend/.cache`) is ephemeral, so a cold start re-runs
-  startup provisioning and creates fresh Tavus personas/guardrails/etc. (harmless -
-  only conversations bill). To avoid the churn later, pre-provision once and pass the
-  ids via env.
+Free-tier: spins down after ~15 min idle (~30-60s cold start). With `PERSONA_*_ID` set, startup skips provisioning (no duplicate resources).
 
-## Recording storage (optional, feature #3)
+## Recording storage (optional)
 
-Tavus copies recordings into **your own** cloud via federated identity. Supported
-providers: **Azure Blob** or **AWS S3** (Cloudflare R2 and other S3-compatible stores
-are *not* supported - Tavus's S3 mode requires AWS IAM AssumeRole). Recording is
-optional; the Report screen's transcript + demeanor analysis work without it.
+Tavus copies recordings into **your own** cloud via federated identity - **Azure Blob** or **AWS S3** (Cloudflare R2 is *not* supported; S3 mode needs AWS IAM AssumeRole). Off by default; the debrief's transcript + demeanor work without it.
 
-### Azure Blob (you have Azure)
+- **Azure:** `az login` then `STORAGE_ACCOUNT=… RESOURCE_GROUP=… WORKSPACE_ID=<your Tavus Workspace ID> ./infra/azure/setup-recording.sh` (the federated-credential subject is your Tavus Workspace ID, so each Tavus account needs its own).
+- **AWS:** `BUCKET=… REGION=… ./infra/aws/setup-recording.sh`
 
-Tavus federates in via Microsoft Entra (issuer `https://recording-copy.tavus.io`,
-subject = your **Tavus Workspace ID** from the Tavus platform profile). Run:
-
-```sh
-az login
-STORAGE_ACCOUNT=visadrillrec RESOURCE_GROUP=visadrill-rg \
-  WORKSPACE_ID=<your-tavus-workspace-id> ./infra/azure/setup-recording.sh
-```
-
-It creates the storage account + container, an Entra app with the federated
-credential, and the `Storage Blob Data Contributor` role at container scope, then
-prints the `.env` lines (`RECORDING_PROVIDER=azure_blob`, storage account, container,
-tenant id, client id). Paste them in and restart.
-
-### AWS S3
-
-```sh
-BUCKET=your-bucket REGION=us-east-1 ./infra/aws/setup-recording.sh
-```
-
-### Verifying a recording
-
-Recording only happens on a **real** interview (a `test_mode` call records nothing),
-which spends free-tier minutes. After a short interview, check the container/bucket.
-To see the recording URL in the Report screen, set `PUBLIC_BASE_URL` (e.g. ngrok) so
-Tavus can POST the `recording_ready` webhook to `/api/webhook`.
-
-## Backend sanity check
-
-```sh
-curl http://localhost:8787/api/health
-# {
-#   "api_key_valid": true,
-#   "replica_id": "r90bbd427f71",
-#   "personas": { "b1b2": "p...", "f1": "p...", "n400": "p..." }
-# }
-```
+Recording only happens on a real interview. To see the recording link in the debrief, set `PUBLIC_BASE_URL` so Tavus can POST the `recording_ready` webhook.
 
 ## API
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/health` | Key status, active replica, persona ids |
-| GET | `/api/replicas` | List stock replicas to choose a face |
-| POST | `/api/liveavatar/embed` | `{category}` -> `{url, conversation_id}` (the frontend's avatar-embed contract; maps category to a persona) |
-| POST | `/api/start-session` | `{visa_type, language?, applicant_id?}` -> `{conversation_url, conversation_id}` |
-| POST | `/api/end-session` | `{conversation_id}` -> ends the Tavus conversation |
-| GET | `/api/report/{conversation_id}` | Demeanor analysis + transcript + recording url |
+| GET | `/api/health` | Key status, active replica, persona ids (one per visa type) |
+| GET | `/api/replicas` | List stock replicas |
+| POST | `/api/liveavatar/embed` | `{category, applicant_context?}` -> `{url, conversation_id, max_seconds, recording}` |
+| POST | `/api/start-session` | `{visa_type, language?, applicant_id?, conversational_context?}` -> `{conversation_url, conversation_id}` |
+| POST | `/api/end-session` | `{conversation_id}` -> ends the conversation |
+| GET | `/api/report/{conversation_id}` | Transcript + demeanor analysis + recording url |
 | POST | `/api/webhook` | Receives Tavus events (transcript, perception, recording-ready) |
+
+`GET /api/health` returns five persona ids: `b1b2`, `f1`, `h1b`, `j1`, `n400`.
 
 ## Code quality & tests
 
 ```sh
 cd backend
-pip install -r requirements-dev.txt   # pytest, ruff, mypy
-ruff check app/ tests/
-mypy app/ tests/
-pytest -q                             # smoke tests, no API key/network needed
+pip install -r requirements-dev.txt
+ruff check app/ tests/ scripts/
+mypy app/ tests/ scripts/
+pytest -q     # offline; mocks the Tavus client
 ```
 
-The smoke suite (`backend/tests/`) mocks the Tavus client, so it runs offline. It
-covers the `/api/*` routes (including the 422 on a bad `visa_type` and the 502 path
-when Tavus errors) and the persona create/reuse/re-sync hashing logic.
-
-The backend follows the repo Python conventions: full type hints, modern union
-syntax, Pydantic models, and the `logging` module (no `print`).
+The backend follows the repo Python conventions: full type hints, modern union syntax, Pydantic models, and the `logging` module (no `print`).
 
 ## Troubleshooting
 
-- **"TAVUS_API_KEY is not set"** - create `.env` at the project root with a non-empty `TAVUS_API_KEY=...`.
-- **Startup fails with a 401** - the Tavus key is invalid or revoked.
-- **`start-session` returns 502** - usually out of credits or an invalid `replica_id`; the Tavus error body is logged to the backend console.
-- **Avatar never appears ("interviewer isn't responding" after 15s)** - same root causes; check the browser console for `[FD-Daily]` logs and the backend console for the `POST /v2/conversations` response.
-- **Idle calls keep billing** - conversations are created with `max_call_duration`, `participant_left_timeout`, and `participant_absent_timeout` set, and the frontend calls `/api/end-session` on End/unload.
+- **"TAVUS_API_KEY is not set"** - create `.env` at the project root with a non-empty key.
+- **Startup 401** - the Tavus key is invalid or revoked.
+- **`embed`/`start-session` returns 502** - usually out of credits or an invalid `replica_id`/persona; the Tavus error body is logged.
+- **Officer never appears → drops to the simulator** - the embed/Daily join failed; check the browser console and the backend log for the `POST /v2/conversations` response. A "Live officer unavailable" notice appears bottom-left.
+- **No audio on iPhone** - tap the "Tap to hear the officer" button; iOS blocks autoplay until a gesture.
+- **Idle calls billing** - conversations set `max_call_duration` + participant timeouts, and the client auto-ends at the countdown.
 
 ## Security note
 
-The Tavus API key is **server-side only** - it lives in `.env` and is read by the
-FastAPI backend. The frontend only talks to our own `/api/*` routes.
+The Tavus API key is **server-side only** - it lives in `.env` and is read by the FastAPI backend. The browser only talks to our own `/api/*` routes.
