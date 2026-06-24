@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import ThemeToggle from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -58,6 +59,7 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
             <Link to="/practice">Try a session</Link>
           </Button>

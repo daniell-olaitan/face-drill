@@ -12,36 +12,35 @@ const steps = [
   {
     number: "02",
     title: "Sit across from the officer",
-    body: "A face that looks back at you, asking real consular questions and pushing back when your answers go soft. You respond out loud, like you will at the window.",
+    body: "A face that looks back at you, asking real consular questions and pushing back when your answers go soft. You respond out loud - or type - like you will at the window.",
   },
   {
     number: "03",
     title: "Get a straight debrief",
-    body: "No grade, no gold stars. For every answer: what landed, what didn’t, and what the officer was actually listening for.",
+    body: "No grade, no gold stars. For every answer: what landed, what didn't, and what the officer was actually listening for.",
   },
 ];
 
 const HowItWorks = () => {
   return (
-    <section className="border-t border-border/70">
+    <section className="border-t border-border bg-secondary/40">
       <div className="container py-20 md:py-28">
         <div className="grid items-start gap-12 lg:grid-cols-[1fr_1.4fr] lg:gap-20">
           <div className="lg:sticky lg:top-28">
             <Reveal>
-              <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                 How it works
               </p>
             </Reveal>
             <Reveal delay={100}>
-              <h2 className="font-display mt-4 text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+              <h2 className="font-display mt-4 text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl">
                 From anxious to rehearsed in one sitting.
               </h2>
             </Reveal>
             <Reveal delay={200}>
               <p className="mt-5 leading-relaxed text-muted-foreground">
-                The whole point is repetition under realistic pressure. Each
-                session takes about five minutes, which means you can do three
-                tonight.
+                The whole point is repetition under realistic pressure. Each session takes about five
+                minutes, which means you can do three tonight.
               </p>
             </Reveal>
             <Reveal delay={300}>
@@ -54,18 +53,22 @@ const HowItWorks = () => {
             </Reveal>
           </div>
 
-          <ol className="space-y-4">
+          <ol>
             {steps.map((step, index) => (
               <Reveal key={step.number} delay={index * 120} as="li">
-                <div className="flex gap-6 rounded-3xl border border-border bg-card p-7 shadow-soft transition-all duration-500 ease-out-soft hover:shadow-medium md:p-8">
+                <div
+                  className={`grid grid-cols-[3.5rem_1fr] gap-5 py-7 ${
+                    index > 0 ? "border-t border-border" : ""
+                  }`}
+                >
                   <span
-                    className="font-display select-none text-3xl font-semibold leading-none text-accent md:text-4xl"
+                    className="font-display text-3xl font-bold leading-none text-brand md:text-4xl"
                     aria-hidden="true"
                   >
                     {step.number}
                   </span>
                   <div>
-                    <h3 className="font-display text-xl font-semibold tracking-tight text-foreground">
+                    <h3 className="font-display text-xl font-bold tracking-tight text-foreground">
                       {step.title}
                     </h3>
                     <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground md:text-[15px]">

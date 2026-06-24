@@ -62,6 +62,51 @@
     /* Motion */
     --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
   }
+
+  /* Dark theme (toggled by adding `.dark` to <html>). visa-drill's immersive
+     deep-navy look applied to the whole app. */
+  .dark {
+    --background: 218 39% 7%;
+    --foreground: 210 20% 92%;
+
+    --card: 216 28% 11%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 216 28% 11%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 217 91% 62%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 216 24% 16%;
+    --secondary-foreground: 210 20% 92%;
+
+    --muted: 216 24% 16%;
+    --muted-foreground: 215 16% 64%;
+
+    --accent: 217 91% 62%;
+    --accent-foreground: 0 0% 100%;
+
+    --brand: 217 91% 64%;
+    --brand-foreground: 0 0% 100%;
+
+    --success: 160 70% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 216 20% 20%;
+    --input: 216 20% 24%;
+    --ring: 217 91% 62%;
+
+    --shadow-soft: 0 2px 8px hsl(220 60% 2% / 0.4), 0 1px 2px hsl(220 60% 2% / 0.3);
+    --shadow-medium: 0 6px 24px hsl(220 60% 2% / 0.5), 0 2px 6px hsl(220 60% 2% / 0.35);
+    --shadow-strong: 0 24px 64px -16px hsl(220 70% 1% / 0.7), 0 8px 24px hsl(220 70% 1% / 0.4);
+  }
 }
 
 @layer base {
