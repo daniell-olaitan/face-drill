@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Mic, MicOff, Video, VideoOff, Volume2 } from "lucide-react";
+import { Loader2, Mic, MicOff, Video, VideoOff, Volume2, Keyboard, Send } from "lucide-react";
 import DailyIframe, { type DailyCall } from "@daily-co/daily-js";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,8 @@ const LiveAvatarVideoInterview = ({
   const [captionsOn, setCaptionsOn] = useState(true);
   const [caption, setCaption] = useState<{ role: "user" | "officer"; text: string } | null>(null);
   const [recording, setRecording] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [draft, setDraft] = useState("");
 
   const callRef = useRef<DailyCall | null>(null);
   const conversationIdRef = useRef<string | null>(null);
@@ -195,6 +197,40 @@ const LiveAvatarVideoInterview = ({
     setCamOn((c) => !c);
   };
 
+  const toggleChat = () => {
+    setChatOpen((open) => {
+      const next = !open;
+      // Typing instead of speaking: mute the mic so it isn't also answering.
+      if (next && micOn) {
+        callRef.current?.setLocalAudio(false);
+        setMicOn(false);
+      }
+      return next;
+    });
+  };
+
+  // Send a typed answer into the live conversation as if the applicant spoke it.
+  // Tavus records it as a user turn, so it shows up in the report/debrief too.
+  const sendTyped = () => {
+    const text = draft.trim();
+    const call = callRef.current;
+    const conversationId = conversationIdRef.current;
+    if (!text || !call || !conversationId) return;
+    call.sendAppMessage(
+      {
+        message_type: "conversation",
+        event_type: "conversation.respond",
+        conversation_id: conversationId,
+        properties: { text },
+      },
+      "*",
+    );
+    setCaption({ role: "user", text });
+    if (captionTimerRef.current !== null) window.clearTimeout(captionTimerRef.current);
+    captionTimerRef.current = window.setTimeout(() => setCaption(null), 6000);
+    setDraft("");
+  };
+
   const lowTime = secondsLeft !== null && secondsLeft <= 30;
   const displaySeconds = secondsLeft ?? durationSeconds;
 
@@ -261,8 +297,13 @@ const LiveAvatarVideoInterview = ({
               </button>
             )}
 
-            {/* Self-view PiP */}
-            <div className="absolute bottom-3 right-3 w-24 overflow-hidden rounded-xl border border-white/25 bg-black/70 shadow-medium sm:w-32">
+            {/* Self-view PiP (hidden while typing to free the bottom area) */}
+            <div
+              className={cn(
+                "absolute bottom-3 right-3 w-24 overflow-hidden rounded-xl border border-white/25 bg-black/70 shadow-medium sm:w-32",
+                chatOpen && "hidden",
+              )}
+            >
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -279,7 +320,12 @@ const LiveAvatarVideoInterview = ({
 
             {/* Live captions */}
             {captionsOn && caption && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center pl-3 pr-28 sm:px-3">
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-0 z-10 flex justify-center pl-3 pr-28 sm:px-3",
+                  chatOpen ? "bottom-32" : "bottom-16",
+                )}
+              >
                 <p className="max-h-32 max-w-2xl overflow-y-auto rounded-lg bg-black/70 px-3 py-1.5 text-center text-sm leading-snug text-white">
                   <span className="font-semibold text-white/60">
                     {caption.role === "user" ? "You: " : "Officer: "}
@@ -313,6 +359,45 @@ const LiveAvatarVideoInterview = ({
                 >
                   <span className={cn(!captionsOn && "opacity-40")}>CC</span>
                 </button>
+                <button
+                  onClick={toggleChat}
+                  aria-label={chatOpen ? "Close typing" : "Type instead of speaking"}
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full text-white backdrop-blur transition-colors",
+                    chatOpen ? "bg-brand hover:bg-brand/90" : "bg-black/60 hover:bg-black/80",
+                  )}
+                >
+                  <Keyboard className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Type-instead-of-speaking input */}
+            {chatOpen && status === "live" && (
+              <div className="absolute bottom-16 left-1/2 z-20 w-full max-w-md -translate-x-1/2 px-4">
+                <div className="flex items-end gap-2 rounded-xl border border-white/15 bg-black/80 px-2 py-1.5 backdrop-blur focus-within:border-brand">
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendTyped();
+                      }
+                    }}
+                    placeholder="Type your answer…"
+                    rows={1}
+                    className="flex-1 resize-none bg-transparent px-1 py-1.5 text-sm leading-relaxed text-white placeholder:text-white/40 focus:outline-none"
+                  />
+                  <button
+                    onClick={sendTyped}
+                    disabled={!draft.trim()}
+                    aria-label="Send answer"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand text-white transition-colors hover:bg-brand/90 disabled:pointer-events-none disabled:opacity-30"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>

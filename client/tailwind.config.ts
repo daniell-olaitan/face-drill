@@ -24,7 +24,7 @@ export default {
 		extend: {
 			fontFamily: {
 				sans: ['Inter Variable', 'Inter', 'system-ui', 'sans-serif'],
-				display: ['Fraunces Variable', 'Fraunces', 'Georgia', 'serif'],
+				display: ['Inter Variable', 'Inter', 'system-ui', 'sans-serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',

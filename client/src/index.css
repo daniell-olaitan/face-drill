@@ -10,53 +10,53 @@
 
 @layer base {
   :root {
-    /* Surfaces */
-    --background: 44 45% 98%;
-    --foreground: 224 28% 14%;
+    /* visa-drill look: deep navy surfaces, blue accent, white text. */
+    --background: 218 39% 7%;
+    --foreground: 210 20% 92%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 224 28% 14%;
+    --card: 216 28% 11%;
+    --card-foreground: 210 20% 92%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 28% 14%;
+    --popover: 216 28% 11%;
+    --popover-foreground: 210 20% 92%;
 
-    /* Ink-navy primary: premium, trustworthy, never shouty */
-    --primary: 224 34% 16%;
-    --primary-foreground: 44 45% 98%;
+    /* Brand blue primary */
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 42 28% 94%;
-    --secondary-foreground: 224 28% 14%;
+    --secondary: 216 24% 16%;
+    --secondary-foreground: 210 20% 92%;
 
-    --muted: 42 28% 95%;
-    --muted-foreground: 224 10% 44%;
+    --muted: 216 24% 16%;
+    --muted-foreground: 215 16% 62%;
 
-    /* Gold accent: used sparingly for warmth and emphasis */
-    --accent: 36 92% 50%;
-    --accent-foreground: 224 34% 14%;
+    /* Blue accent (replaces the old gold) */
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
 
     /* Link / focus blue */
-    --brand: 221 60% 44%;
+    --brand: 221 83% 53%;
     --brand-foreground: 0 0% 100%;
 
-    --success: 152 34% 36%;
+    --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 36 92% 50%;
-    --warning-foreground: 224 34% 14%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
 
-    --destructive: 4 66% 50%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 42 20% 88%;
-    --input: 42 20% 85%;
-    --ring: 221 60% 44%;
+    --border: 216 20% 20%;
+    --input: 216 20% 24%;
+    --ring: 221 83% 53%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    /* Shadows: warm-tinted, soft */
-    --shadow-soft: 0 2px 8px hsl(40 30% 40% / 0.06), 0 1px 2px hsl(40 30% 40% / 0.05);
-    --shadow-medium: 0 6px 24px hsl(40 30% 35% / 0.10), 0 2px 6px hsl(40 30% 35% / 0.06);
-    --shadow-strong: 0 24px 64px -16px hsl(224 30% 25% / 0.22), 0 8px 24px hsl(224 30% 25% / 0.08);
+    /* Shadows: deep, for the dark theme */
+    --shadow-soft: 0 2px 8px hsl(220 60% 2% / 0.4), 0 1px 2px hsl(220 60% 2% / 0.3);
+    --shadow-medium: 0 6px 24px hsl(220 60% 2% / 0.5), 0 2px 6px hsl(220 60% 2% / 0.35);
+    --shadow-strong: 0 24px 64px -16px hsl(220 70% 1% / 0.7), 0 8px 24px hsl(220 70% 1% / 0.4);
 
     /* Motion */
     --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
@@ -123,8 +123,9 @@
 
 @layer utilities {
   .font-display {
-    font-family: "Fraunces Variable", "Fraunces", "Georgia", serif;
+    font-family: "Inter Variable", "Inter", system-ui, sans-serif;
     font-optical-sizing: auto;
+    letter-spacing: -0.02em;
   }
 
   .text-balance {
