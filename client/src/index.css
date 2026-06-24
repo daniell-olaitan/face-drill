@@ -10,25 +10,26 @@
 
 @layer base {
   :root {
-    /* visa-drill look: deep navy surfaces, blue accent, white text. */
-    --background: 218 39% 7%;
-    --foreground: 210 20% 92%;
+    /* visa-drill look: light surfaces, dark ink text, blue accents.
+       (The live interview screen stays dark via its own explicit colors.) */
+    --background: 210 40% 99%;
+    --foreground: 213 28% 9%;
 
-    --card: 216 28% 11%;
-    --card-foreground: 210 20% 92%;
+    --card: 0 0% 100%;
+    --card-foreground: 213 28% 9%;
 
-    --popover: 216 28% 11%;
-    --popover-foreground: 210 20% 92%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 28% 9%;
 
     /* Brand blue primary */
     --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 216 24% 16%;
-    --secondary-foreground: 210 20% 92%;
+    --secondary: 210 17% 97%;
+    --secondary-foreground: 213 28% 9%;
 
-    --muted: 216 24% 16%;
-    --muted-foreground: 215 16% 62%;
+    --muted: 210 17% 96%;
+    --muted-foreground: 215 14% 42%;
 
     /* Blue accent (replaces the old gold) */
     --accent: 217 91% 60%;
@@ -38,25 +39,25 @@
     --brand: 221 83% 53%;
     --brand-foreground: 0 0% 100%;
 
-    --success: 160 84% 39%;
+    --success: 160 84% 36%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
     --warning-foreground: 222 47% 11%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 216 20% 20%;
-    --input: 216 20% 24%;
+    --border: 220 13% 91%;
+    --input: 216 12% 84%;
     --ring: 221 83% 53%;
 
     --radius: 0.75rem;
 
-    /* Shadows: deep, for the dark theme */
-    --shadow-soft: 0 2px 8px hsl(220 60% 2% / 0.4), 0 1px 2px hsl(220 60% 2% / 0.3);
-    --shadow-medium: 0 6px 24px hsl(220 60% 2% / 0.5), 0 2px 6px hsl(220 60% 2% / 0.35);
-    --shadow-strong: 0 24px 64px -16px hsl(220 70% 1% / 0.7), 0 8px 24px hsl(220 70% 1% / 0.4);
+    /* Shadows: soft, light */
+    --shadow-soft: 0 2px 8px hsl(220 25% 20% / 0.06), 0 1px 2px hsl(220 25% 20% / 0.05);
+    --shadow-medium: 0 6px 20px hsl(220 25% 20% / 0.08), 0 2px 6px hsl(220 25% 20% / 0.05);
+    --shadow-strong: 0 24px 48px -16px hsl(220 30% 25% / 0.18), 0 8px 20px hsl(220 30% 25% / 0.08);
 
     /* Motion */
     --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
