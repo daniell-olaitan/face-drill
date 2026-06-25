@@ -41,6 +41,8 @@ def test_list_replicas(client: TestClient) -> None:
 def test_waitlist_valid(
     client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.delenv("SUPABASE_URL", raising=False)  # force the local-file path
+    monkeypatch.delenv("SUPABASE_SERVICE_KEY", raising=False)
     monkeypatch.setenv("WAITLIST_FILE", str(tmp_path / "waitlist.jsonl"))
     res = client.post("/api/waitlist", json={"email": "Me@Example.com"})
     assert res.status_code == 200
@@ -59,6 +61,8 @@ def test_waitlist_invalid_email(client: TestClient) -> None:
 def test_waitlist_admin_list(
     client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.delenv("SUPABASE_URL", raising=False)  # force the local-file path
+    monkeypatch.delenv("SUPABASE_SERVICE_KEY", raising=False)
     monkeypatch.setenv("WAITLIST_FILE", str(tmp_path / "waitlist.jsonl"))
     monkeypatch.setenv("ADMIN_TOKEN", "secret")
     client.post("/api/waitlist", json={"email": "a@b.com"})

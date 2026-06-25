@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -9,6 +10,26 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/config.py -> parents[2] is the visa-drill repo root, where .env lives.
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
+
+
+def _load_dotenv_into_environ(path: Path) -> None:
+    """Load KEY=VALUE lines from .env into os.environ without overriding real env
+    vars. pydantic-settings reads .env into Settings only, so values consumed via
+    os.getenv (the waitlist's SUPABASE_URL / SUPABASE_SERVICE_KEY / ADMIN_TOKEN /
+    WAITLIST_FILE) would otherwise be invisible in local dev. Hosts that inject
+    real env vars (e.g. Render) still win, because setdefault does not override.
+    """
+    if not path.exists():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_dotenv_into_environ(REPO_ROOT / ".env")
 
 
 class Settings(BaseSettings):
