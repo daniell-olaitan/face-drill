@@ -25,8 +25,17 @@ def _load_dotenv_into_environ(path: Path) -> None:
         line = raw.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
-        key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        key, _, raw = line.partition("=")
+        value = raw.strip()
+        if value[:1] in {'"', "'"}:  # quoted: keep contents verbatim (e.g. a "#")
+            quote = value[0]
+            end = value.find(quote, 1)
+            value = value[1:end] if end != -1 else value[1:]
+        else:  # unquoted: drop an inline " # comment"
+            for sep in (" #", "\t#"):
+                if sep in value:
+                    value = value.split(sep, 1)[0].rstrip()
+        os.environ.setdefault(key.strip(), value)
 
 
 _load_dotenv_into_environ(REPO_ROOT / ".env")
