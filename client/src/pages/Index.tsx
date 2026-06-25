@@ -154,7 +154,7 @@ function SessionPreviewCard() {
 
 export default function Index() {
   return (
-    <div className="relative isolate flex min-h-screen flex-col overflow-x-hidden bg-canvas-base">
+    <div className="relative isolate flex min-h-screen flex-col overflow-x-clip bg-canvas-base">
       <PageCanvas />
       <Navbar />
 
