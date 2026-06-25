@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     tavus_api_key: str
     # Stock replica used for every interviewer. Swap via TAVUS_REPLICA_ID; list
     # available stock replicas with `GET /api/replicas`.
-    tavus_replica_id: str = "r90bbd427f71"
+    tavus_replica_id: str = "rfb0463909e3"  # "James - Office", a male officer
     # Tavus-hosted LLM that drives the persona. tavus-gpt-oss is the lowest-latency default.
     tavus_llm_model: str = "tavus-gpt-oss"
     port: int = 8787

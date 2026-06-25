@@ -20,15 +20,9 @@ const Footer = () => {
           </div>
 
           <nav className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm" aria-label="Footer">
-            <a href="/#why" className="text-muted-foreground transition-colors hover:text-foreground">
-              Why it works
-            </a>
             <Link to="/practice" className="text-muted-foreground transition-colors hover:text-foreground">
               Try a session
             </Link>
-            <a href="/#questions" className="text-muted-foreground transition-colors hover:text-foreground">
-              The questions
-            </a>
             <a href="/#faq" className="text-muted-foreground transition-colors hover:text-foreground">
               FAQ
             </a>

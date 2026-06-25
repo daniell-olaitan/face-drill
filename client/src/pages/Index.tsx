@@ -8,7 +8,6 @@ import { PageCanvas } from "@/components/landing/visadrill/page-canvas";
 import { JourneyTrail } from "@/components/landing/visadrill/journey-trail";
 import { TwoWindows } from "@/components/landing/visadrill/two-windows";
 import { WaitlistForm } from "@/components/landing/visadrill/waitlist-form";
-import { QuestionBank } from "@/components/landing/QuestionBank";
 import { Faq } from "@/components/landing/Faq";
 import { cn } from "@/lib/utils";
 
@@ -339,9 +338,6 @@ export default function Index() {
 
       {/* THE PAYOFF - two windows */}
       <TwoWindows />
-
-      {/* THE QUESTION BANK */}
-      <QuestionBank />
 
       {/* FAQ */}
       <Faq />

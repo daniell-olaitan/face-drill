@@ -37,7 +37,6 @@ export function VisaDrillLogo({ size = "md", light = false }: { size?: "sm" | "m
 // `to` = a route (react-router Link); `href` = a same-page hash anchor (plain <a>).
 const NAV_LINKS: { label: string; to?: string; href?: string }[] = [
   { to: "/practice", label: "Practice" },
-  { href: "#questions", label: "Questions" },
   { href: "#faq", label: "FAQ" },
 ];
 
