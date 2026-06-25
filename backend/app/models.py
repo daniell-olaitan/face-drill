@@ -42,8 +42,6 @@ class EmbedResponse(BaseModel):
     conversation_id: str
     # Visible interview length for the client countdown timer.
     max_seconds: int
-    # Whether the session is being recorded (so the UI can show a REC indicator).
-    recording: bool
 
 
 class EndSessionRequest(BaseModel):
@@ -81,11 +79,10 @@ class TranscriptTurn(BaseModel):
 
 
 class ReportResponse(BaseModel):
-    """Post-interview report assembled from Tavus events (features #1, #2, #3)."""
+    """Post-interview report assembled from Tavus events (features #1, #2)."""
 
     conversation_id: str
     status: str
     transcript: list[TranscriptTurn]
     perception_analysis: str | None = None
-    recording_url: str | None = None
     ready: bool

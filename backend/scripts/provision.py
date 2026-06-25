@@ -1,6 +1,6 @@
 """Provision the Tavus resources once and print the persona ids to pin via env.
 
-Run this locally after setting TAVUS_API_KEY (and any recording vars). Paste the
+Run this locally after setting TAVUS_API_KEY. Paste the
 printed PERSONA_*_ID lines into your host's env (e.g. Render dashboard) so deployed
 instances reuse these personas instead of re-creating resources on every cold start.
 

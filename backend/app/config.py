@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -62,55 +61,6 @@ class Settings(BaseSettings):
     # Public base URL of this server (e.g. an ngrok https URL) so Tavus can POST
     # webhooks to <base>/api/webhook. Leave unset to rely on verbose polling.
     public_base_url: str | None = None
-
-    # Session recording (feature #3). Tavus copies the recording into your own
-    # cloud via federated identity. Supported providers: "s3" or "azure_blob".
-    enable_recording: bool = False
-    recording_provider: str = "s3"
-    recording_key_template: str | None = None
-    # AWS S3 (provider="s3"): Tavus assumes an IAM role to write to the bucket.
-    recording_bucket: str | None = None
-    recording_region: str | None = None
-    recording_role_arn: str | None = None
-    # Azure Blob (provider="azure_blob"): Tavus uses Entra workload-identity federation.
-    recording_azure_storage_account: str | None = None
-    recording_azure_container: str | None = None
-    recording_azure_tenant_id: str | None = None
-    recording_azure_client_id: str | None = None
-
-    def recording_storage(self, *, force: bool = False) -> dict[str, Any] | None:
-        """Build the `recording_storage` payload for the configured provider, or None.
-
-        Returns None when recording is disabled or the chosen provider is missing
-        required fields, so the caller can omit storage rather than send a bad config.
-        `force=True` ignores the enable flag (used by the verify script to probe a
-        configured-but-not-yet-enabled provider).
-        """
-        if not force and not self.enable_recording:
-            return None
-
-        config: dict[str, Any] | None = None
-        if self.recording_provider == "s3":
-            if self.recording_bucket:
-                config = {
-                    "provider": "s3",
-                    "bucket_name": self.recording_bucket,
-                    "bucket_region": self.recording_region,
-                    "assume_role_arn": self.recording_role_arn,
-                }
-        elif self.recording_provider == "azure_blob":
-            if self.recording_azure_storage_account and self.recording_azure_container:
-                config = {
-                    "provider": "azure_blob",
-                    "storage_account": self.recording_azure_storage_account,
-                    "container": self.recording_azure_container,
-                    "tenant_id": self.recording_azure_tenant_id,
-                    "client_id": self.recording_azure_client_id,
-                }
-
-        if config is not None and self.recording_key_template:
-            config["key_template"] = self.recording_key_template
-        return config
 
     model_config = SettingsConfigDict(
         env_file=str(REPO_ROOT / ".env"),

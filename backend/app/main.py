@@ -156,11 +156,6 @@ async def start_session(body: StartSessionRequest) -> StartSessionResponse:
         "enable_closed_captions": True,
         "language": body.language or settings.default_language,
     }
-    if settings.enable_recording:
-        properties["enable_recording"] = True
-        storage = settings.recording_storage()
-        if storage is not None:
-            properties["recording_storage"] = storage
 
     payload: dict[str, Any] = {
         "persona_id": persona_id,
@@ -175,7 +170,7 @@ async def start_session(body: StartSessionRequest) -> StartSessionResponse:
     # Cross-session memory (feature #7): a stable, user-specific store key.
     if body.applicant_id:
         payload["memory_stores"] = [f"{body.applicant_id}-{body.visa_type}"]
-    # Webhook delivery (features #1/#3) when a public URL is known. Render injects
+    # Webhook delivery (feature #1) when a public URL is known. Render injects
     # RENDER_EXTERNAL_URL automatically, so deployed instances need no extra config.
     webhook_base = settings.public_base_url or os.getenv("RENDER_EXTERNAL_URL")
     if webhook_base:
@@ -215,7 +210,6 @@ async def embed(body: EmbedRequest) -> EmbedResponse:
         url=session.conversation_url,
         conversation_id=session.conversation_id,
         max_seconds=settings.interview_duration_seconds,
-        recording=settings.enable_recording,
     )
 
 
@@ -342,7 +336,7 @@ async def list_waitlist(request: Request) -> JSONResponse:
 
 @app.post("/api/webhook")
 async def webhook(request: Request) -> dict[str, bool]:
-    """Receive Tavus webhook events (transcript, perception analysis, recording-ready)."""
+    """Receive Tavus webhook events (transcript, perception analysis)."""
     event = await request.json()
     conversation_id = event.get("conversation_id") if isinstance(event, dict) else None
     if isinstance(conversation_id, str):
@@ -383,12 +377,11 @@ def _clean_turns(raw: list[Any]) -> list[TranscriptTurn]:
 
 def _parse_events(
     events: list[Any],
-) -> tuple[list[TranscriptTurn], str | None, str | None]:
-    """Extract transcript, perception analysis, and recording url from Tavus events."""
+) -> tuple[list[TranscriptTurn], str | None]:
+    """Extract the transcript and perception analysis from Tavus events."""
     transcript: list[TranscriptTurn] = []
     utterances: list[dict[str, Any]] = []
     perception: str | None = None
-    recording: str | None = None
 
     for ev in events:
         if not isinstance(ev, dict):
@@ -407,16 +400,12 @@ def _parse_events(
             analysis = props.get("analysis")
             if isinstance(analysis, str):
                 perception = analysis
-        elif etype.endswith("recording_ready"):
-            uri = props.get("storage_uri") or props.get("s3_key") or props.get("url")
-            if uri is not None:
-                recording = str(uri)
         elif etype.endswith("utterance"):
             speech = props.get("speech") or props.get("text")
             if isinstance(speech, str) and speech:
                 utterances.append({"role": props.get("role", ""), "speech": speech})
 
-    return (transcript or _clean_turns(utterances)), perception, recording
+    return (transcript or _clean_turns(utterances)), perception
 
 
 @app.get("/api/report/{conversation_id}", response_model=ReportResponse)
@@ -433,13 +422,12 @@ async def report(conversation_id: str) -> ReportResponse:
     events = events if isinstance(events, list) else []
     events = [*events, *app.state.events.get(conversation_id, [])]
 
-    transcript, perception, recording = _parse_events(events)
+    transcript, perception = _parse_events(events)
     return ReportResponse(
         conversation_id=conversation_id,
         status=str(convo.get("status", "unknown")) if isinstance(convo, dict) else "unknown",
         transcript=transcript,
         perception_analysis=perception,
-        recording_url=recording,
         ready=bool(transcript) or perception is not None,
     )
 

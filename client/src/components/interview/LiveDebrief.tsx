@@ -199,16 +199,6 @@ const LiveDebrief = ({ conversationId }: LiveDebriefProps) => {
           ))}
         </div>
       )}
-
-      {report?.recording_url && (
-        <Reveal delay={200}>
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            <a href={report.recording_url} className="font-medium text-accent underline-offset-4 hover:underline">
-              Watch the recording
-            </a>
-          </p>
-        </Reveal>
-      )}
     </>
   );
 };

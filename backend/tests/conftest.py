@@ -120,11 +120,6 @@ def client(fake_client: FakeTavusClient) -> TestClient:
         default_language="english",
         civics_document_url="",
         public_base_url=None,
-        enable_recording=False,
-        recording_provider="s3",
-        recording_bucket=None,
-        recording_region=None,
-        recording_role_arn=None,
     )
     app.state.client = fake_client
     app.state.personas = {

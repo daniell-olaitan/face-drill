@@ -17,7 +17,7 @@ There's also a general "any" practice mode. (A USCIS **N-400 citizenship** offic
 
 1. **Practice** page → pick a visa category.
 2. A brief **"I'm ready" briefing** screen (no form to fill in). The tap also unlocks iOS audio so the officer's voice can autoplay.
-3. **Live interview** (`/interview`, full-screen): the Tavus officer rendered via the Daily SDK, with the officer video filling the card, your self-view as a PiP, **mic/camera** controls, **live captions (CC toggle)**, a **countdown that auto-ends**, and a **REC** indicator when recording is on.
+3. **Live interview** (`/interview`, full-screen): the Tavus officer rendered via the Daily SDK, with the officer video filling the card, your self-view as a PiP, **mic/camera** controls, **live captions (CC toggle)**, and a **countdown that auto-ends**.
 4. **Debrief** (`/debrief`): a scored report (below).
 
 The officer opens by asking the purpose of the trip; it does not ask for the applicant's name.
@@ -42,7 +42,7 @@ For a live interview, `/debrief` (`LiveDebrief.tsx`) fetches `/api/report/:id` a
 - a **verdict** + **approval-readiness score (0-100)**, with **progress vs. your last attempt**,
 - **per-area scores** (purpose, ties, finances, and so on),
 - **per-answer notes** (what landed / what to tighten), computed by reusing the simulator's free heuristic engine on the transcript; **unanswered questions count as zero**, so going silent tanks the score,
-- the officer's **demeanor read** (Raven perception) and a **recording link** when available.
+- the officer's **demeanor read** (Raven perception).
 
 The scoring is local and free (no extra LLM call), and the browser simulator keeps its own local heuristic debrief.
 
@@ -52,7 +52,6 @@ The scoring is local and free (no extra LLM call), and the browser simulator kee
 |---|---|---|
 | 1 | **Perception (Raven)** | Live awareness cues + end-of-call demeanor analysis |
 | 2 | **Objectives** | A per-category objective set drives flow + structured output |
-| 3 | **Recording** | Optional; copied to your own Azure/S3. Off by default |
 | 4 | **Knowledge base (RAG)** | USCIS civics doc, attached to the **N-400** officer only (not the visa tracks) |
 | 5 | **Guardrails** | Never coach/break character, block real PII, stay on topic |
 | 6 | **Flow + STT** | Turn-taking, interruptibility, **idle re-engagement**, hotwords |
@@ -82,7 +81,7 @@ The landing also ships a light/dark theme toggle and an email waitlist form. Sig
 Browser (SPA served by FastAPI)              FastAPI (:8787)            Tavus API
   /interview (Live)
     │  POST /api/liveavatar/embed {category, applicant_context?} ─► POST /v2/conversations ─►
-    │  ◄── { url, conversation_id, max_seconds, recording } ◄──────── ◄── conversation_url ──
+    │  ◄── { url, conversation_id, max_seconds } ◄──────── ◄── conversation_url ──
     ▼
   Daily SDK joins the room  ◄════ WebRTC ════►  Tavus officer joins and speaks
   (officer video + self-view PiP + captions + countdown)
@@ -129,7 +128,6 @@ The officer's opening line is a per-conversation `custom_greeting` read from `SP
 | `TAVUS_REPLICA_ID` | Stock replica (the officer's face); list with `GET /api/replicas` |
 | `INTERVIEW_DURATION_SECONDS` | Visible interview length / auto-end (default 240) |
 | `PERSONA_*_ID` (×5) | Pre-provisioned persona ids; set all to skip startup provisioning |
-| `ENABLE_RECORDING`, `RECORDING_AZURE_*` / `RECORDING_*` (S3) | Optional recording |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | Optional waitlist store (else a local file); see [Waitlist](#waitlist) |
 | `ADMIN_TOKEN` | Optional; enables the admin signup-list endpoint (`GET /api/waitlist`) |
 | `DEFAULT_LANGUAGE`, `CIVICS_DOCUMENT_URL`, `PUBLIC_BASE_URL` | Optional |
@@ -149,7 +147,7 @@ python backend/scripts/verify_tavus.py                 # creates+deletes a probe
 python backend/scripts/verify_tavus.py --skip-conversation
 ```
 
-Conversation probes use `test_mode`, so they don't bill minutes. Prints `OK`/`FAIL` per feature (#1-#9).
+Conversation probes use `test_mode`, so they don't bill minutes. Prints `OK`/`FAIL` per feature.
 
 ## Deploy (free, single service on Render)
 
@@ -157,19 +155,10 @@ The `Dockerfile` builds the Vite frontend and serves it from FastAPI, so one fre
 
 1. Push the repo to GitHub.
 2. Render → **New → Blueprint** (reads `render.yaml`), or **Web Service → Docker**.
-3. Set the `sync: false` env vars in the dashboard (`TAVUS_API_KEY`, `PERSONA_*_ID`, recording vars, and so on).
+3. Set the `sync: false` env vars in the dashboard (`TAVUS_API_KEY`, `PERSONA_*_ID`, and so on).
 4. Deploy → live at `https://<name>.onrender.com`; `/api/health` is the health check and the SPA is at `/`.
 
 Free-tier: spins down after about 15 min idle (roughly 30-60s cold start). With `PERSONA_*_ID` set, startup skips provisioning, so there are no duplicate resources.
-
-## Recording storage (optional)
-
-Tavus copies recordings into **your own** cloud via federated identity, either **Azure Blob** or **AWS S3** (Cloudflare R2 is *not* supported; S3 mode needs AWS IAM AssumeRole). Recording is off by default, and the debrief's transcript + demeanor work without it.
-
-- **Azure:** `az login`, then `STORAGE_ACCOUNT=… RESOURCE_GROUP=… WORKSPACE_ID=<your Tavus Workspace ID> ./infra/azure/setup-recording.sh` (the federated-credential subject is your Tavus Workspace ID, so each Tavus account needs its own).
-- **AWS:** `BUCKET=… REGION=… ./infra/aws/setup-recording.sh`
-
-Recording only happens on a real interview. To see the recording link in the debrief, set `PUBLIC_BASE_URL` so Tavus can POST the `recording_ready` webhook.
 
 ## Waitlist
 
@@ -200,13 +189,13 @@ curl -s https://<host>/api/waitlist -H "X-Admin-Token: $ADMIN_TOKEN"
 |---|---|---|
 | GET | `/api/health` | Key status, active replica, persona ids (one per visa type) |
 | GET | `/api/replicas` | List stock replicas |
-| POST | `/api/liveavatar/embed` | `{category, applicant_context?}` -> `{url, conversation_id, max_seconds, recording}` |
+| POST | `/api/liveavatar/embed` | `{category, applicant_context?}` -> `{url, conversation_id, max_seconds}` |
 | POST | `/api/start-session` | `{visa_type, language?, applicant_id?, conversational_context?}` -> `{conversation_url, conversation_id}` |
 | POST | `/api/end-session` | `{conversation_id}` -> ends the conversation |
 | POST | `/api/waitlist` | `{email}` -> `{data, error}`; stores to Supabase or a local file |
 | GET | `/api/waitlist` | Admin-only signup list; needs `ADMIN_TOKEN` + `X-Admin-Token` header |
-| GET | `/api/report/{conversation_id}` | Transcript + demeanor analysis + recording url |
-| POST | `/api/webhook` | Receives Tavus events (transcript, perception, recording-ready) |
+| GET | `/api/report/{conversation_id}` | Transcript + demeanor analysis |
+| POST | `/api/webhook` | Receives Tavus events (transcript, perception) |
 
 `GET /api/health` returns five persona ids: `b1b2`, `f1`, `h1b`, `j1`, `n400`.
 

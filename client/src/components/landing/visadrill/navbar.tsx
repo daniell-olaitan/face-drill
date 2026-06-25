@@ -34,7 +34,12 @@ export function VisaDrillLogo({ size = "md", light = false }: { size?: "sm" | "m
   );
 }
 
-const NAV_LINKS = [{ to: "/practice", label: "Practice" }];
+// `to` = a route (react-router Link); `href` = a same-page hash anchor (plain <a>).
+const NAV_LINKS: { label: string; to?: string; href?: string }[] = [
+  { to: "/practice", label: "Practice" },
+  { href: "#questions", label: "Questions" },
+  { href: "#faq", label: "FAQ" },
+];
 
 export function Navbar({ floating = false }: { floating?: boolean }) {
   const { pathname } = useLocation();
@@ -82,18 +87,15 @@ export function Navbar({ floating = false }: { floating?: boolean }) {
 
             <div className="hidden items-center gap-1 md:flex" onMouseLeave={() => setHovered(null)}>
               {NAV_LINKS.map((link) => {
-                const active = pathname === link.to;
-                return (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    onMouseEnter={() => setHovered(link.to)}
-                    className={cn(
-                      "relative rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
-                      active ? "text-white" : "text-white/50 hover:text-white",
-                    )}
-                  >
-                    {hovered === link.to && (
+                const key = link.to ?? link.href ?? link.label;
+                const active = link.to ? pathname === link.to : false;
+                const className = cn(
+                  "relative rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
+                  active ? "text-white" : "text-white/50 hover:text-white",
+                );
+                const inner = (
+                  <>
+                    {hovered === key && (
                       <motion.span
                         layoutId="nav-hover"
                         className="absolute inset-0 rounded-md bg-white/7"
@@ -101,7 +103,16 @@ export function Navbar({ floating = false }: { floating?: boolean }) {
                       />
                     )}
                     <span className="relative z-10">{link.label}</span>
+                  </>
+                );
+                return link.to ? (
+                  <Link key={key} to={link.to} onMouseEnter={() => setHovered(key)} className={className}>
+                    {inner}
                   </Link>
+                ) : (
+                  <a key={key} href={link.href} onMouseEnter={() => setHovered(key)} className={className}>
+                    {inner}
+                  </a>
                 );
               })}
             </div>
@@ -134,16 +145,20 @@ export function Navbar({ floating = false }: { floating?: boolean }) {
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className="mt-2 overflow-hidden rounded-[14px] border border-white/8 bg-[#0a0a10]/95 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl md:hidden"
               >
-                {NAV_LINKS.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center border-b border-white/5 px-5 py-4 text-sm font-medium text-white/55 transition-colors hover:bg-white/4 hover:text-white"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                {NAV_LINKS.map((link) => {
+                  const key = link.to ?? link.href ?? link.label;
+                  const className =
+                    "flex items-center border-b border-white/5 px-5 py-4 text-sm font-medium text-white/55 transition-colors hover:bg-white/4 hover:text-white";
+                  return link.to ? (
+                    <Link key={key} to={link.to} onClick={() => setMenuOpen(false)} className={className}>
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a key={key} href={link.href} onClick={() => setMenuOpen(false)} className={className}>
+                      {link.label}
+                    </a>
+                  );
+                })}
                 <div className="px-5 py-4">
                   <a
                     href="#waitlist"

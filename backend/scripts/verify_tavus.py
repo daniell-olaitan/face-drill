@@ -179,12 +179,12 @@ async def run(args: argparse.Namespace) -> int:
             results.append(("#1 Perception (Raven)", False, str(err)))
             results.append(("#6 Flow + STT hotwords", False, "persona create failed"))
 
-        # --- Conversation-level: #8 Language, #7 Memories, #3 Recording (test_mode) ---
+        # --- Conversation-level: #8 Language, #7 Memories (test_mode) ---
         if args.skip_conversation:
-            for feat in ("#8 Language", "#7 Memories", "#3 Recording"):
+            for feat in ("#8 Language", "#7 Memories"):
                 results.append((feat, False, "skipped (--skip-conversation)"))
         elif persona_id is None:
-            for feat in ("#8 Language", "#7 Memories", "#3 Recording"):
+            for feat in ("#8 Language", "#7 Memories"):
                 results.append((feat, False, "skipped (no persona)"))
         else:
             base_props = {
@@ -218,39 +218,6 @@ async def run(args: argparse.Namespace) -> int:
             except Exception as err:  # noqa: BLE001
                 results.append(("#8 Language", False, str(err)))
                 results.append(("#7 Memories", False, str(err)))
-
-            # Recording in a separate test_mode conversation, including the real
-            # recording_storage config when a provider is configured (validates the
-            # S3 role / Azure federation shape without a billed call).
-            storage = settings.recording_storage(force=True)
-            rec_props: dict[str, object] = {**base_props, "enable_recording": True}
-            if storage is not None:
-                rec_props["recording_storage"] = storage
-            try:
-                rec = await client.request(
-                    "POST",
-                    "/conversations",
-                    json={
-                        "persona_id": persona_id,
-                        "replica_id": settings.tavus_replica_id,
-                        "test_mode": True,
-                        "properties": rec_props,
-                    },
-                )
-                if rec.is_success:
-                    cid = rec.json().get("conversation_id")
-                    if isinstance(cid, str):
-                        await _delete(client, f"/conversations/{cid}", keep=args.keep)
-                    detail = (
-                        f"accepted ({storage['provider']} storage config)"
-                        if storage is not None
-                        else "enable_recording accepted (no storage configured - set RECORDING_PROVIDER + fields)"
-                    )
-                    results.append(("#3 Recording", True, detail))
-                else:
-                    results.append(("#3 Recording", False, f"{rec.status_code}: {rec.text[:160]}"))
-            except Exception as err:  # noqa: BLE001
-                results.append(("#3 Recording", False, str(err)))
 
         # --- Cleanup ---
         if created and not args.keep:

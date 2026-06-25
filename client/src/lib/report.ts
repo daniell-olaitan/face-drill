@@ -11,7 +11,6 @@ export interface InterviewReport {
   status: string;
   transcript: TranscriptTurn[];
   perception_analysis: string | null;
-  recording_url: string | null;
   ready: boolean;
 }
 

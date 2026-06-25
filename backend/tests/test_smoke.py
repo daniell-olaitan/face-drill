@@ -192,7 +192,7 @@ def test_parse_events_excludes_system_prompt() -> None:
             "properties": {"analysis": "Calm, steady eye contact."},
         },
     ]
-    transcript, perception, recording = _parse_events(events)
+    transcript, perception = _parse_events(events)
     assert [t.role for t in transcript] == ["assistant", "user", "assistant"]
     assert all("consular officer" not in t.content for t in transcript)
     assert perception == "Calm, steady eye contact."
@@ -209,18 +209,18 @@ def test_parse_events_excludes_system_prompt() -> None:
             },
         }
     ]
-    turns, _, _ = _parse_events(big)
+    turns, _ = _parse_events(big)
     assert [t.content for t in turns] == ["Short line."]
 
 
 def test_webhook_stores_event(client: TestClient) -> None:
     from app.main import app
 
-    event = {"event_type": "application.recording_ready", "conversation_id": "c999"}
+    event = {"event_type": "application.transcription_ready", "conversation_id": "c999"}
     res = client.post("/api/webhook", json=event)
     assert res.status_code == 200
     assert res.json() == {"received": True}
-    assert app.state.events["c999"][0]["event_type"] == "application.recording_ready"
+    assert app.state.events["c999"][0]["event_type"] == "application.transcription_ready"
 
 
 def test_build_persona_payload_has_all_layers() -> None:
@@ -341,59 +341,3 @@ def test_preset_personas(monkeypatch: pytest.MonkeyPatch) -> None:
         "j1": "p4",
         "n400": "p5",
     }
-
-
-def test_recording_storage_builder(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app import config
-
-    monkeypatch.setattr(
-        config.Settings,
-        "model_config",
-        {**config.Settings.model_config, "env_file": "/nonexistent/.env"},
-    )
-    monkeypatch.setenv("TAVUS_API_KEY", "sk-test")
-
-    # Disabled -> no storage.
-    monkeypatch.setenv("ENABLE_RECORDING", "false")
-    assert config.load_settings().recording_storage() is None
-
-    # Azure Blob -> federated config.
-    monkeypatch.setenv("ENABLE_RECORDING", "true")
-    monkeypatch.setenv("RECORDING_PROVIDER", "azure_blob")
-    monkeypatch.setenv("RECORDING_AZURE_STORAGE_ACCOUNT", "acct")
-    monkeypatch.setenv("RECORDING_AZURE_CONTAINER", "rec")
-    monkeypatch.setenv("RECORDING_AZURE_TENANT_ID", "t1")
-    monkeypatch.setenv("RECORDING_AZURE_CLIENT_ID", "c1")
-    assert config.load_settings().recording_storage() == {
-        "provider": "azure_blob",
-        "storage_account": "acct",
-        "container": "rec",
-        "tenant_id": "t1",
-        "client_id": "c1",
-    }
-
-    # Azure missing required fields -> None (caller omits storage).
-    monkeypatch.delenv("RECORDING_AZURE_CONTAINER")
-    assert config.load_settings().recording_storage() is None
-
-
-def test_recording_storage_force_ignores_enable_flag(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app import config
-
-    monkeypatch.setattr(
-        config.Settings,
-        "model_config",
-        {**config.Settings.model_config, "env_file": "/nonexistent/.env"},
-    )
-    monkeypatch.setenv("TAVUS_API_KEY", "sk-test")
-    monkeypatch.setenv("ENABLE_RECORDING", "false")  # not enabled yet
-    monkeypatch.setenv("RECORDING_PROVIDER", "azure_blob")
-    monkeypatch.setenv("RECORDING_AZURE_STORAGE_ACCOUNT", "acct")
-    monkeypatch.setenv("RECORDING_AZURE_CONTAINER", "rec")
-
-    settings = config.load_settings()
-    # The verify script probes configured-but-disabled providers via force=True.
-    assert settings.recording_storage() is None
-    forced = settings.recording_storage(force=True)
-    assert forced is not None
-    assert forced["provider"] == "azure_blob"
