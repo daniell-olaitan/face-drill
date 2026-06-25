@@ -29,11 +29,13 @@ class TavusApiError(Exception):
 class TavusClient:
     """Async wrapper around the Tavus v2 API."""
 
-    def __init__(self, api_key: str, *, timeout: float = 30.0) -> None:
+    # Persona creation (the heaviest call, built once at startup) can take well
+    # over 30s, so give read operations a generous ceiling. Connect stays short.
+    def __init__(self, api_key: str, *, timeout: float = 90.0) -> None:
         self._client = httpx.AsyncClient(
             base_url=BASE_URL,
             headers={"x-api-key": api_key},
-            timeout=timeout,
+            timeout=httpx.Timeout(timeout, connect=10.0),
         )
 
     async def aclose(self) -> None:
