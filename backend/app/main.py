@@ -108,6 +108,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="VisaDrill", lifespan=lifespan)
 
+# Webhook buffer kept on the module-level app so serverless platforms that skip
+# the ASGI lifespan (e.g. Vercel) still have somewhere to collect events. The
+# lifespan re-sets this for container deploys.
+app.state.events = {}
+
 
 def _client(app: FastAPI) -> AvatarClient:
     return app.state.client
@@ -117,8 +122,31 @@ def _personas(app: FastAPI) -> PersonaMap:
     return app.state.personas
 
 
+async def _ensure_ready() -> None:
+    """Initialize app.state on first request when the ASGI lifespan did not run.
+
+    Container deploys initialize in `lifespan`; serverless platforms (e.g. Vercel)
+    may skip it, so we lazily build the client and resolve personas on first use
+    and cache them on the module-level app. Serverless filesystems are read-only,
+    so PERSONA_*_ID must be preset (startup provisioning is unavailable there).
+    """
+    if getattr(app.state, "personas", None) is not None:
+        return
+    settings = load_settings()
+    preset = settings.preset_personas()
+    if preset is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Set PERSONA_*_ID env vars (startup provisioning is unavailable on serverless).",
+        )
+    app.state.settings = settings
+    app.state.client = AvatarClient(settings.avatar_api_key)
+    app.state.personas = {visa: preset[visa] for visa in VISA_TYPES}
+
+
 @app.get("/api/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
+    await _ensure_ready()
     settings: Settings = app.state.settings
     return HealthResponse(
         api_key_valid=True,
@@ -130,6 +158,7 @@ async def health() -> HealthResponse:
 @app.get("/api/replicas", response_model=list[StockReplica])
 async def list_replicas() -> list[StockReplica]:
     """List the provider stock replicas so the interviewer face can be swapped via AVATAR_REPLICA_ID."""
+    await _ensure_ready()
     try:
         data = await _client(app).request_json(
             "GET", "/replicas", params={"replica_type": "system", "limit": 100}
@@ -146,6 +175,7 @@ async def list_replicas() -> list[StockReplica]:
 
 @app.post("/api/start-session", response_model=StartSessionResponse)
 async def start_session(body: StartSessionRequest) -> StartSessionResponse:
+    await _ensure_ready()
     settings: Settings = app.state.settings
     persona_id = _personas(app)[body.visa_type]
 
@@ -197,6 +227,7 @@ async def embed(body: EmbedRequest) -> EmbedResponse:
     Mirrors the frontend's existing LiveAvatar embed contract ({category} -> {url})
     so the interview UI works unchanged, but the URL is a provider room.
     """
+    await _ensure_ready()
     settings: Settings = app.state.settings
     category = body.category.lower()
     visa_type: VisaType = CATEGORY_TO_VISA.get(category) or "b1b2"
@@ -215,6 +246,7 @@ async def embed(body: EmbedRequest) -> EmbedResponse:
 @app.post("/api/end-session")
 async def end_session(body: EndSessionRequest) -> dict[str, bool]:
     """End a provider conversation so its room shuts down and billing stops promptly."""
+    await _ensure_ready()
     try:
         await _client(app).request_json("POST", f"/conversations/{body.conversation_id}/end")
     except AvatarApiError as err:
@@ -410,6 +442,7 @@ def _parse_events(
 @app.get("/api/report/{conversation_id}", response_model=ReportResponse)
 async def report(conversation_id: str) -> ReportResponse:
     """Assemble the post-interview report from the verbose conversation and any webhooks."""
+    await _ensure_ready()
     try:
         convo = await _client(app).request_json(
             "GET", f"/conversations/{conversation_id}", params={"verbose": "true"}
