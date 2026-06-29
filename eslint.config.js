@@ -25,5 +25,11 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-unused-vars": "off",
     },
+  },
+  {
+    // Vendored shadcn/ui components export variants and hooks alongside the
+    // component, which the Fast Refresh rule flags; it does not apply here.
+    files: ["src/components/ui/**"],
+    rules: { "react-refresh/only-export-components": "off" },
   }
 );

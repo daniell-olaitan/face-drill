@@ -78,10 +78,10 @@ const LiveAvatarVideoInterview = ({
       if (call) {
         try {
           await call.leave();
-        } catch {}
+        } catch { /* already leaving or left */ }
         try {
           call.destroy();
-        } catch {}
+        } catch { /* already destroyed */ }
       }
     };
 
